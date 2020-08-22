@@ -74,6 +74,18 @@ const FoodDetails: React.FC = () => {
   useEffect(() => {
     async function loadFood(): Promise<void> {
       // Load a specific food with extras based on routeParams id
+      const { data } = await api.get(`foods/${routeParams.id}`);
+      const formattedFood = {
+        ...data,
+        formattedPrice: formatValue(data.price),
+      };
+      setFood(formattedFood);
+
+      const extraIngredients = data.extras.map((extra: Extra) => ({
+        ...extra,
+        quantity: 0,
+      }));
+      setExtras(extraIngredients);
     }
 
     loadFood();
@@ -81,26 +93,62 @@ const FoodDetails: React.FC = () => {
 
   function handleIncrementExtra(id: number): void {
     // Increment extra quantity
+    const increaseExtras = extras.map(extra => {
+      if (extra.id === id) {
+        return {
+          ...extra,
+          quantity: extra.quantity + 1,
+        };
+      }
+      return extra;
+    });
+    setExtras(increaseExtras);
   }
 
   function handleDecrementExtra(id: number): void {
     // Decrement extra quantity
+    const decreaseExtras = extras.map(extra => {
+      if (extra.id === id && extra.quantity > 0) {
+        return {
+          ...extra,
+          quantity: extra.quantity - 1,
+        };
+      }
+      return extra;
+    });
+    setExtras(decreaseExtras);
   }
 
   function handleIncrementFood(): void {
     // Increment food quantity
+    setFoodQuantity(state => state + 1);
   }
 
   function handleDecrementFood(): void {
     // Decrement food quantity
+    if (foodQuantity === 1) {
+      return;
+    }
+    setFoodQuantity(foodQuantity - 1);
   }
 
-  const toggleFavorite = useCallback(() => {
+  const toggleFavorite = useCallback(async () => {
     // Toggle if food is favorite or not
+    isFavorite
+      ? await api.delete(`favorites/${food.id}`)
+      : await api.post('favorites', food);
+    setIsFavorite(state => !state);
   }, [isFavorite, food]);
 
   const cartTotal = useMemo(() => {
     // Calculate cartTotal
+    const sumExtras = extras.reduce(
+      (accumulator, extra) => accumulator + extra.value * extra.quantity,
+      0,
+    );
+    const subtotal = food.price + sumExtras;
+    const total = subtotal * foodQuantity;
+    return formatValue(total);
   }, [extras, food, foodQuantity]);
 
   async function handleFinishOrder(): Promise<void> {
